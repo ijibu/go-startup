@@ -55,13 +55,19 @@ func parseHtmlFile(path string) {
 
 	// 逐行读入分词
 	for {
-		dict, _ := reader.ReadString('\n')
+		dict, err := reader.ReadString('\n')
 		dict = strings.TrimSpace(dict)
 
-		if len(dict) == 0 {
+		if err != nil {
 			// 文件结束
 			break
 		}
+
+		if len(dict) == 0 {
+			// 空行
+			continue
+		}
+
 		re, _ := regexp.Compile("[\u0391-\uFFE5]+")
 		ret := re.FindAllStringSubmatch(dict, -1)
 		lineConent := strings.Replace(dict, ",", "@@", -1)
