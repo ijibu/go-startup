@@ -44,6 +44,7 @@ func parse() {
 }
 
 func parseHtmlFile(path string) {
+	fmt.Println("")
 	dictFile, err := os.Open(path)
 	defer dictFile.Close()
 	if err != nil {
@@ -51,10 +52,11 @@ func parseHtmlFile(path string) {
 	}
 
 	reader := bufio.NewReader(dictFile)
-	line := 1
+	line := 0
 
 	// 逐行读入分词
 	for {
+		line++
 		dict, err := reader.ReadString('\n')
 		dict = strings.TrimSpace(dict)
 
@@ -68,15 +70,33 @@ func parseHtmlFile(path string) {
 			continue
 		}
 
+		//行首为*的是多行注释，删除掉。	这个还有待验证。只有php时可能正确。html时就不一定正确。
+		var hzRegexp = regexp.MustCompile(`^\*`)
+		if hzRegexp.MatchString(dict) {
+			continue
+		}
+		hzRegexp = regexp.MustCompile(`^\/\*`) //行首为/*的是多行注释的开始，删除掉。
+		if hzRegexp.MatchString(dict) {
+			continue
+		}
+		hzRegexp = regexp.MustCompile(`^\/\/`) //行首为//的是单行注释的开始，删除掉。
+		if hzRegexp.MatchString(dict) {
+			continue
+		}
+
+		//匹配//后面出现的汉字，这个替换对html文档就可能出错了，比如url里面有
+		reg := regexp.MustCompile("//[\u0391-\uFFE5]+.*")
+		lineConent := reg.ReplaceAllString(dict, "")
+
 		re, _ := regexp.Compile("[\u0391-\uFFE5]+")
-		ret := re.FindAllStringSubmatch(dict, -1)
-		lineConent := strings.Replace(dict, ",", "@@", -1)
+		ret := re.FindAllStringSubmatch(lineConent, -1)
+		lineConent = strings.Replace(dict, ",", "@@", -1)
 		if len(ret) > 0 {
+			//要查看是否所有匹配的中文都是出现在注释中。
 			fmt.Print(lineConent + "," + path + "," + strconv.Itoa(line) + ",")
 			//str := strings.Join(ret[0], "\r\n")
 			fmt.Println(ret)
 		}
-		line++
 	}
 }
 
