@@ -58,7 +58,9 @@ func parseHtmlFile(path string) {
 	for {
 		line++
 		dict, err := reader.ReadString('\n')
-		dict = strings.TrimSpace(dict)
+		//dict = strings.TrimSpace(dict)
+		reg1 := regexp.MustCompile("[\\n\\r]") //删除末尾的换行符，不删除空格是为了保留代码的缩进。
+		dict = reg1.ReplaceAllString(dict, "")
 
 		if err != nil {
 			// 文件结束
@@ -75,11 +77,19 @@ func parseHtmlFile(path string) {
 		if hzRegexp.MatchString(dict) {
 			continue
 		}
+		hzRegexp = regexp.MustCompile(`^\s+\*`) //行首为：多个空格+*的是多行注释的开始，删除掉。
+		if hzRegexp.MatchString(dict) {
+			continue
+		}
 		hzRegexp = regexp.MustCompile(`^\/\*`) //行首为/*的是多行注释的开始，删除掉。
 		if hzRegexp.MatchString(dict) {
 			continue
 		}
 		hzRegexp = regexp.MustCompile(`^\/\/`) //行首为//的是单行注释的开始，删除掉。
+		if hzRegexp.MatchString(dict) {
+			continue
+		}
+		hzRegexp = regexp.MustCompile(`^\/\/\s+`) //行首为//+多个空格开始的是单行注释的开始，删除掉。
 		if hzRegexp.MatchString(dict) {
 			continue
 		}
@@ -90,12 +100,44 @@ func parseHtmlFile(path string) {
 
 		re, _ := regexp.Compile("[\u0391-\uFFE5]+")
 		ret := re.FindAllStringSubmatch(lineConent, -1)
+
+		//还应该对同一行的文字进行去重。
 		lineConent = strings.Replace(dict, ",", "@@", -1)
 		if len(ret) > 0 {
-			//要查看是否所有匹配的中文都是出现在注释中。
-			fmt.Print(lineConent + "," + path + "," + strconv.Itoa(line) + ",")
-			//str := strings.Join(ret[0], "\r\n")
-			fmt.Println(ret)
+			//匹配所有的情况，主要是js
+			if len(ret) == 1 && ret[0][0] == "：" {
+
+			} else {
+				fmt.Print(lineConent + "," + path + "," + strconv.Itoa(line) + ",")
+				fmt.Println(ret)
+			}
+
+			/*
+				//匹配一行出现多个连续汉字的。
+				if len(ret) > 1 {
+					fmt.Print(lineConent + "," + path + "," + strconv.Itoa(line) + ",")
+					fmt.Println(ret[0])
+				}
+			*/
+			/*
+				每个连续出现的汉字是一行。
+				for i := 0; i < len(ret); i++ {
+					if i == 0 {
+						fmt.Println(ret[i])
+					} else {
+						fmt.Print(",,,")
+						fmt.Println(ret[i])
+					}
+				}
+			*/
+
+			/*
+				//每行只出现一次连续的汉字提取出来
+				if len(ret) == 1 {
+					fmt.Print(lineConent + "," + path + "," + strconv.Itoa(line) + ",")
+					fmt.Println(ret[0])
+				}
+			*/
 		}
 	}
 }
