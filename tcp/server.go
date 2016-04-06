@@ -3,16 +3,22 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"net"
+	"sync"
 )
 
 //用来记录所有的客户端连接
-var ConnMap map[string]*net.TCPConn
+type ConnInfos struct {
+	Conn map[string]*net.TCPConn
+	lock sync.RWMutex
+}
+
+var ConnMap ConnInfos
 
 func main() {
 	var tcpAddr *net.TCPAddr
-	ConnMap = make(map[string]*net.TCPConn)
+	ConnMap := &ConnInfos{Conn: make(map[string]*net.TCPConn)}
+
 	tcpAddr, _ = net.ResolveTCPAddr("tcp", "127.0.0.1:9999")
 	tcpListener, _ := net.ListenTCP("tcp", tcpAddr)
 	defer func() {
@@ -25,7 +31,9 @@ func main() {
 		}
 		fmt.Println("A client connected : " + tcpConn.RemoteAddr().String())
 		// 新连接加入map
-		ConnMap[tcpConn.RemoteAddr().String()] = tcpConn
+		ConnMap.lock.Lock()
+		ConnMap.Conn[tcpConn.RemoteAddr().String()] = tcpConn
+		ConnMap.lock.Unlock()
 		go tcpPipe(tcpConn)
 	}
 }
@@ -51,7 +59,10 @@ func tcpPipe(conn *net.TCPConn) {
 func boradcastMessage(message string) {
 	b := []byte(message)
 	// 遍历所有客户端并发送消息
-	for _, conn := range ConnMap {
+	// 此处存在bug，会抛出panic("concurrent map read and map write")
+	ConnMap.lock.RLock()
+	for _, conn := range ConnMap.Conn {
 		conn.Write(b)
 	}
+	ConnMap.lock.RUnlock()
 }

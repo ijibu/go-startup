@@ -40,7 +40,7 @@ func connect() {
 	fmt.Println("connected!")
 	go onMessageRecived(conn)
 
-	var fDumpCache string = "5s"
+	var fDumpCache string = "1s"
 	if !(fDumpCache == "") {
 		dur, err := time.ParseDuration(fDumpCache)
 		if err != nil {
@@ -51,6 +51,7 @@ func connect() {
 		for {
 			msg := time.Now().String()
 			b := []byte(msg + "aaaaaaaaaaa\n")
+			fmt.Println(string(b))
 			conn.Write(b)
 			//time.Sleep()表示休眠多少时间，休眠时处于阻塞状态，后续程序无法执行．
 			//time.After()表示多少时间之后，但是在取出channel内容之前不阻塞，后续程序可以继续执行。
