@@ -19,7 +19,7 @@ func main() {
 	var tcpAddr *net.TCPAddr
 	ConnMap := &ConnInfos{Conn: make(map[string]*net.TCPConn)}
 
-	tcpAddr, _ = net.ResolveTCPAddr("tcp", "127.0.0.1:9999")
+	tcpAddr, _ = net.ResolveTCPAddr("tcp", ":9999")
 	tcpListener, _ := net.ListenTCP("tcp", tcpAddr)
 	defer func() {
 		tcpListener.Close()
@@ -46,11 +46,12 @@ func tcpPipe(conn *net.TCPConn) {
 	}()
 	reader := bufio.NewReader(conn)
 	for {
-		message, err := reader.ReadString('\n')
+		message, _, err := reader.ReadRune()
+
 		if err != nil {
 			return
 		}
-		fmt.Println(conn.RemoteAddr().String() + ":" + string(message))
+		fmt.Println(message)
 		// 这里返回消息改为了广播
 		boradcastMessage(conn.RemoteAddr().String() + ":" + string(message))
 	}
@@ -60,6 +61,7 @@ func boradcastMessage(message string) {
 	b := []byte(message)
 	// 遍历所有客户端并发送消息
 	// 此处存在bug，会抛出panic("concurrent map read and map write")
+	// http://studygolang.com/articles/2775 (优化 Go 中的 map 并发存取)
 	ConnMap.lock.RLock()
 	for _, conn := range ConnMap.Conn {
 		conn.Write(b)
